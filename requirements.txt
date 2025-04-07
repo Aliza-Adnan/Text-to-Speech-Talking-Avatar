@@ -3,3 +3,4 @@ deepface
 opencv-python
 pydub
 numpy
+librosa

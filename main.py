@@ -1,89 +1,94 @@
+import os
+import subprocess
 import numpy as np
 import cv2
 from gtts import gTTS
-from pydub import AudioSegment
-import os
-import ffmpeg
+from pathlib import Path
 
-class LightweightAvatarTTS:
-    def __init__(self):
-        # Load base avatar image
-        self.avatar_img = cv2.imread("assets/neutral_face.jpg")
-        if self.avatar_img is None:
-            # Create a placeholder if image not found
-            self.avatar_img = np.zeros((300, 300, 3), dtype=np.uint8)
-            self.avatar_img.fill(255)  # White background
-            cv2.circle(self.avatar_img, (150, 150), 100, (0, 0, 255), -1)  # Red face
-            cv2.putText(self.avatar_img, "AVATAR", (80, 160), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+class Wav2LipAvatar:
+    def __init__(self, wav2lip_dir="Wav2Lip"):
+        """
+        Initialize Wav2Lip system
+        Args:
+            wav2lip_dir: Path to Wav2Lip repository (clone from https://github.com/Rudrabha/Wav2Lip)
+        """
+        self.wav2lip_dir = Path(wav2lip_dir)
+        self.avatar_img = self._load_avatar("assets/neutral_face.jpg")
         
-    def generate_audio(self, text, output_path="output_audio.mp3"):
-        """Generate speech audio from text using gTTS"""
-        tts = gTTS(text=text, lang='en', slow=False)
-        tts.save(output_path)
-        return output_path
-    
-    def generate_viseme_frames(self, audio_path):
-        """Generate simple facial animation frames"""
-        audio = AudioSegment.from_mp3(audio_path)
-        duration_sec = len(audio) / 1000.0
-        fps = 25
-        frame_count = int(duration_sec * fps)
+        # Verify Wav2Lip installation
+        assert (self.wav2lip_dir/"inference.py").exists(), "Wav2Lip not found at specified path"
         
-        frames = []
-        for i in range(frame_count):
-            # Simple mouth movement based on frame position
-            progress = i/frame_count
-            mouth_open = int(20 * abs(np.sin(progress * 10 * np.pi)))
-            
-            frame = self.avatar_img.copy()
-            cv2.ellipse(frame, (150, 200), (40, mouth_open), 0, 180, 360, (0, 0, 0), -1)
-            frames.append(frame)
-        
-        return frames
-    
-    def create_video(self, text, output_path="output.mp4"):
-        """Full pipeline with ffmpeg for audio-video merging"""
-        # Generate audio
-        audio_path = self.generate_audio(text)
-        
-        # Generate silent video
-        frames = self.generate_viseme_frames(audio_path)
-        height, width = frames[0].shape[:2]
-        
-        # First save video without audio
-        silent_video_path = "temp_silent.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        video_writer = cv2.VideoWriter(silent_video_path, fourcc, 25, (width, height))
-        
-        for frame in frames:
-            video_writer.write(frame)
-        video_writer.release()
-        
-        # Now combine audio and video using ffmpeg
+    def _load_avatar(self, path):
+        """Load avatar image with fallback placeholder"""
         try:
-            video_stream = ffmpeg.input(silent_video_path)
-            audio_stream = ffmpeg.input(audio_path)
-            
-            ffmpeg.output(
-                video_stream, 
-                audio_stream, 
-                output_path, 
-                vcodec='libx264', 
-                acodec='aac', 
-                strict='experimental'
-            ).overwrite_output().run()
-            
-        except ffmpeg.Error as e:
-            print("FFmpeg error:", e.stderr.decode())
-            raise
+            img = cv2.imread(path)
+            if img is None:
+                raise FileNotFoundError
+            return img
+        except:
+            # Create placeholder avatar
+            img = np.zeros((256, 256, 3), dtype=np.uint8)  # Wav2Lip works best with 256x256
+            img.fill(255)
+            cv2.circle(img, (128, 128), 100, (0, 0, 255), -1)
+            cv2.putText(img, "AVATAR", (60, 140), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
+            return img
+
+    def generate_audio(self, text, output_path="output_audio.wav"):
+        """Generate speech audio (WAV format works best with Wav2Lip)"""
+        tts = gTTS(text=text, lang='en', slow=False)
         
-        # Clean up temporary files
-        os.remove(silent_video_path)
+        # Save as MP3 first (gTTS limitation)
+        mp3_path = str(Path(output_path).with_suffix('.mp3'))
+        tts.save(mp3_path)
+        
+        # Convert to WAV using ffmpeg
+        cmd = f"ffmpeg -y -i {mp3_path} -acodec pcm_s16le -ar 16000 {output_path}"
+        subprocess.run(cmd, shell=True, check=True)
+        os.remove(mp3_path)
+        
+        return output_path
+
+    def _run_wav2lip(self, face_path, audio_path, output_path):
+        """Execute Wav2Lip inference"""
+        cmd = [
+            "python", str(self.wav2lip_dir/"inference.py"),
+            "--checkpoint_path", str(self.wav2lip_dir/"checkpoints/wav2lip_gan.pth"),
+            "--face", face_path,
+            "--audio", audio_path,
+            "--outfile", output_path,
+            "--pads", "0", "10", "0", "0",  # Adjust padding if needed
+            "--resize_factor", "1"  # Disable automatic resizing
+        ]
+        subprocess.run(cmd, check=True)
+
+    def create_video(self, text, output_path="output.mp4"):
+        """Generate lip-synced video with Wav2Lip"""
+        # Prepare temporary files
+        temp_dir = Path("temp")
+        temp_dir.mkdir(exist_ok=True)
+        
+        face_path = str(temp_dir/"avatar.jpg")
+        audio_path = str(temp_dir/"audio.wav")
+        
+        # Save avatar (resize for Wav2Lip if needed)
+        cv2.imwrite(face_path, cv2.resize(self.avatar_img, (256, 256)))
+        
+        # Generate audio
+        self.generate_audio(text, audio_path)
+        
+        # Run Wav2Lip
+        self._run_wav2lip(face_path, audio_path, output_path)
+        
+        # Cleanup
+        for f in temp_dir.glob("*"):
+            f.unlink()
+        temp_dir.rmdir()
         
         return output_path
 
 if __name__ == "__main__":
-    avatar = LightweightAvatarTTS()
-    result = avatar.create_video("Hello world, this is a test of TTS with facial animation.")
-    print(f"Video created at: {result}")
+    # Example usage
+    avatar = Wav2LipAvatar(wav2lip_dir="Wav2Lip")  # Set your Wav2Lip path
+    result = avatar.create_video("Hello world! This is now professionally lip-synced!")
+    print(f"Final video saved to: {result}")
