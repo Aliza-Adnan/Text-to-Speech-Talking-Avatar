@@ -1,0 +1,5 @@
+gTTS
+deepface
+opencv-python
+pydub
+numpy
