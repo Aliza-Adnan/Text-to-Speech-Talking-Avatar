@@ -3,10 +3,10 @@ import subprocess
 from gtts import gTTS
 
 # Paths
-BASE_IMAGE = "temp/avatar.jpg"  # Your static avatar image
+BASE_IMAGE = "assets/avatar.jpg"  # Your static avatar image
 TEMP_VIDEO = "temp_video.mp4"
 OUTPUT_AUDIO = "output.wav"
-OUTPUT_VIDEO = "final_output.mp4"
+OUTPUT_VIDEO = "final_output_fom.mp4"
 
 def text_to_speech(text, output_path=OUTPUT_AUDIO):
     """Converts text to speech using gTTS and saves as a WAV file."""
