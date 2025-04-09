@@ -3,3 +3,6 @@ Wav2Lip/
 /Wav2Lip
 /first-order-model
 first-order-model/
+*.mp3
+temp_video_1.mp4
+*.wav
