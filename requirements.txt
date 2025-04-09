@@ -1,6 +1,6 @@
-gTTS
+gTTS==2.5.4
 deepface
-pydub
+pydub==0..25.1
 librosa==0.7.0
 #numpy==1.17.1
 opencv-contrib-python>=4.2.0.34
@@ -9,5 +9,8 @@ torch==1.1.0
 torchvision==0.3.0
 tqdm==4.45.0
 numba==0.48
-SpeechRecognition
-#ye theek krna hai
+SpeechRecognition==3.14.2
+Flask==3.1.0
+requests==2.32.3
+jsonify==0.5
+uuid-utils==0.10.0
