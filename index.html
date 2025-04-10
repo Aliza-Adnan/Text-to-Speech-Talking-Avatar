@@ -4,17 +4,64 @@
     <title>Talking Avatar Demo</title>
     <script>
         async function generateAvatar() {
-            const text = document.getElementById('text-input').value;
-            const response = await fetch(`https://your-replit-url.repl.co/generate?text=${encodeURIComponent(text)}`);
-            const result = await response.json();
-            document.getElementById('result-video').src = result.video_url;
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) {
+                alert("Please enter some text!");
+                return;
+            }
+            
+            const button = document.querySelector('button');
+            button.disabled = true;
+            button.textContent = 'Generating...';
+            
+            try {
+                // Use the same origin as the page is served from
+                const baseUrl = window.location.origin;
+                const response = await fetch(`${baseUrl}/generate?text=${encodeURIComponent(text)}`);
+                
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+
+                const result = await response.json();
+                const videoElement = document.getElementById('result-video');
+                
+                // Clear previous source
+                videoElement.src = '';
+                
+                // Add a timestamp to prevent caching
+                const videoUrl = `${baseUrl}${result.video_url}?t=${Date.now()}`;
+                videoElement.src = videoUrl;
+                videoElement.autoplay = true;
+                videoElement.muted = true;
+                videoElement.controls = true;
+
+                videoElement.onloadeddata = function() {
+                    videoElement.play().catch(e => {
+                        console.error("Autoplay prevented:", e);
+                        videoElement.controls = true;
+                    });
+                };
+                
+                videoElement.onerror = function() {
+                    alert("Error loading video. Please try again.");
+                };
+            } catch (error) {
+                console.error("Error:", error);
+                alert(`Failed to generate video: ${error.message}`);
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Generate Avatar Video';
+            }
         }
     </script>
 </head>
 <body>
     <h1>Talking Avatar Demo</h1>
     <input type="text" id="text-input" placeholder="Enter text...">
-    <button onclick="generateAvatar()">Generate</button>
-    <video id="result-video" controls></video>
+    <button onclick="generateAvatar()">Generate Avatar Video</button>
+    <div style="margin-top: 20px;">
+        <video id="result-video" width="256" height="256" style="background: #000;"></video>
+    </div>
 </body>
 </html>

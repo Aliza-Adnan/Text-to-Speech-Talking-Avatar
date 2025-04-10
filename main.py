@@ -1,5 +1,6 @@
 import os
 import subprocess
+import argparse
 from gtts import gTTS
 
 # Paths
@@ -7,7 +8,7 @@ BASE_IMAGE = "assets/avatar_1.jpg"
 TEMP_VIDEO = "temp_video_1.mp4"
 TEMP_OUTPUT = "temp_result_1.mp4"  # Temporary Wav2Lip output
 OUTPUT_AUDIO = "output_1.wav"
-OUTPUT_VIDEO = "final_output_1.mp4"
+OUTPUT_VIDEO = "static/final_output_1.mp4"
 
 # Ensure temp directory exists
 os.makedirs("temp", exist_ok=True)
@@ -46,8 +47,14 @@ def generate_lipsync(input_video, input_audio, output_video):
     subprocess.run(cmd)
 
 if __name__ == "__main__":
-    user_text = input("Enter text: ")
-    
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Generate a talking avatar video.")
+    parser.add_argument('--text', required=True, help="Text to convert to speech and animate.")
+    parser.add_argument('--output', required=True, help="Output path for the final video.")
+    args = parser.parse_args()
+
+    user_text = args.text  # Use the text passed from the command line
+
     print("Generating speech...")
     audio_path = text_to_speech(user_text)
     
@@ -55,6 +62,6 @@ if __name__ == "__main__":
     image_to_video(BASE_IMAGE, TEMP_VIDEO, audio_path)
     
     print("Animating avatar...")
-    generate_lipsync(TEMP_VIDEO, audio_path, OUTPUT_VIDEO)
+    generate_lipsync(TEMP_VIDEO, audio_path, args.output)
     
-    print(f"Done! Output: {OUTPUT_VIDEO}")
+    print(f"Done! Output: {args.output}")
