@@ -8,8 +8,8 @@ A Flask web application that generates talking avatar videos from text input usi
 
 ## ⚙️ Setup
 ### Requirements
-#### Install dependencies:
-pip install -r requirements.txt
+- #### Install dependencies:
+  pip install -r requirements.txt
 
-#### Run the app:
-python server.py
+- #### Run the app:
+  python server.py
