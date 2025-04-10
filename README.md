@@ -8,9 +8,9 @@ Web Interface - Simple HTML frontend to input text and view the generated video
 Replit-Compatible - Ready to deploy on Replit with proper port configuration
 
 ## ⚙️ Setup
-# Requirements
-Install dependencies:
+### Requirements
+#### Install dependencies:
 pip install -r requirements.txt
 
-Run the app:
+#### Run the app:
 python server.py
